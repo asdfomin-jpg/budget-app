@@ -12,8 +12,15 @@ export async function createServerSupabase() {
         getAll() {
           return cookieStore.getAll();
         },
-        setAll() {
-          // middleware handles cookie refresh/write
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          } catch {
+            // Server Components can read cookies for auth checks even when
+            // response cookie writes are not available in this context.
+          }
         },
       },
     }
