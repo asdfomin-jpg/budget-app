@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import DashboardClient from "../DashboardClient";
+import HomePageClient from "../HomePageClient";
 import { createServerSupabase } from "../../lib/supabase/server";
 
 export default async function TemplatesPage() {
@@ -14,5 +14,5 @@ export default async function TemplatesPage() {
     redirect("/login");
   }
 
-  return <DashboardClient mode="templates" />;
+  return <HomePageClient mode="templates" />;
 }
