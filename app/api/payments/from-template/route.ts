@@ -39,14 +39,6 @@ function buildDateForMonth(monthDate: string, dueDay: unknown) {
   return isValidDate(candidate) ? candidate : null;
 }
 
-function getNextMonthFirstDay(monthDate: string) {
-  const [year, month] = monthDate.slice(0, 7).split("-").map(Number);
-  const nextMonth = month === 12 ? 1 : month + 1;
-  const nextYear = month === 12 ? year + 1 : year;
-
-  return `${String(nextYear).padStart(4, "0")}-${String(nextMonth).padStart(2, "0")}-01`;
-}
-
 export async function POST(request: Request) {
   try {
     const supabase = await createServerSupabase();
@@ -146,10 +138,6 @@ export async function POST(request: Request) {
       (typeof body?.due_date === "string" && isValidDate(body.due_date) && body.due_date) ||
       buildDateForMonth(billingMonth, template.due_day) ||
       null;
-    const nextDueDate = buildDateForMonth(
-      getNextMonthFirstDay(billingMonth),
-      template.due_day
-    );
 
     const templateBaseAmount = Number(template.base_amount ?? 0);
     const baseAmount =
@@ -169,7 +157,6 @@ export async function POST(request: Request) {
       kind: template.kind,
       billing_month: billingMonth,
       due_date: dueDate,
-      next_due_date: nextDueDate,
       base_amount: baseAmount,
       actual_paid_total: 0,
       remaining_amount: baseAmount,
@@ -184,17 +171,15 @@ export async function POST(request: Request) {
       .single();
 
     if (paymentError) {
-      if (paymentError.code === "23505") {
-        const { data: duplicatePayment, error: duplicatePaymentError } =
-          await findExistingPayment();
+      const { data: duplicatePayment, error: duplicatePaymentError } =
+        await findExistingPayment();
 
-        if (duplicatePaymentError) {
-          return NextResponse.json({ error: duplicatePaymentError.message }, { status: 500 });
-        }
+      if (duplicatePaymentError) {
+        return NextResponse.json({ error: duplicatePaymentError.message }, { status: 500 });
+      }
 
-        if (duplicatePayment) {
-          return NextResponse.json({ data: duplicatePayment });
-        }
+      if (duplicatePayment) {
+        return NextResponse.json({ data: duplicatePayment });
       }
 
       return NextResponse.json({ error: paymentError.message }, { status: 500 });
