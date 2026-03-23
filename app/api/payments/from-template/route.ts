@@ -121,6 +121,27 @@ export async function POST(request: Request) {
     }
 
     const billingMonth = getFirstDayOfMonth(billingMonthInput);
+
+    const findExistingPayment = async () =>
+      supabase
+        .from("payments")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("template_id", template.id)
+        .eq("billing_month", billingMonth)
+        .maybeSingle();
+
+    const { data: existingPayment, error: existingPaymentError } =
+      await findExistingPayment();
+
+    if (existingPaymentError) {
+      return NextResponse.json({ error: existingPaymentError.message }, { status: 500 });
+    }
+
+    if (existingPayment) {
+      return NextResponse.json({ data: existingPayment });
+    }
+
     const dueDate =
       (typeof body?.due_date === "string" && isValidDate(body.due_date) && body.due_date) ||
       buildDateForMonth(billingMonth, template.due_day) ||
@@ -176,6 +197,19 @@ export async function POST(request: Request) {
       .single();
 
     if (paymentError) {
+      if (paymentError.code === "23505") {
+        const { data: duplicatePayment, error: duplicatePaymentError } =
+          await findExistingPayment();
+
+        if (duplicatePaymentError) {
+          return NextResponse.json({ error: duplicatePaymentError.message }, { status: 500 });
+        }
+
+        if (duplicatePayment) {
+          return NextResponse.json({ data: duplicatePayment });
+        }
+      }
+
       return NextResponse.json({ error: paymentError.message }, { status: 500 });
     }
 
