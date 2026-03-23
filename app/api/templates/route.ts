@@ -16,8 +16,7 @@ export async function GET() {
       .from("payment_templates")
       .select("*")
       .eq("user_id", user.id)
-      .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: true });
+      .order("name", { ascending: true });
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
@@ -48,6 +47,28 @@ export async function POST(request: Request) {
     const body = await request.json();
     const name =
       typeof body?.name === "string" ? body.name.trim() : "";
+    const category =
+      typeof body?.category === "string" && body.category.trim()
+        ? body.category.trim()
+        : null;
+    const kind =
+      typeof body?.kind === "string" && body.kind.trim()
+        ? body.kind.trim()
+        : null;
+    const recurrenceType =
+      typeof body?.recurrence_type === "string" && body.recurrence_type.trim()
+        ? body.recurrence_type.trim()
+        : null;
+    const dueDayValue =
+      body?.due_day === undefined || body?.due_day === null || body?.due_day === ""
+        ? null
+        : Number(body.due_day);
+    const baseAmountValue =
+      body?.base_amount === undefined ||
+      body?.base_amount === null ||
+      body?.base_amount === ""
+        ? null
+        : Number(body.base_amount);
 
     if (!name) {
       return NextResponse.json(
@@ -56,23 +77,34 @@ export async function POST(request: Request) {
       );
     }
 
+    if (
+      dueDayValue !== null &&
+      (!Number.isInteger(dueDayValue) || dueDayValue < 1 || dueDayValue > 31)
+    ) {
+      return NextResponse.json(
+        { error: "due_day must be an integer between 1 and 31" },
+        { status: 400 }
+      );
+    }
+
+    if (
+      baseAmountValue !== null &&
+      (!Number.isFinite(baseAmountValue) || baseAmountValue < 0)
+    ) {
+      return NextResponse.json(
+        { error: "base_amount must be a non-negative number" },
+        { status: 400 }
+      );
+    }
+
     const insertRow = {
       user_id: user.id,
       name,
-      category: body?.category ?? null,
-      kind: body?.kind ?? null,
-      account_id: body?.account_id ?? null,
-      recurrence_type: body?.recurrence_type ?? null,
-      due_day: body?.due_day ?? null,
-      default_due_date: body?.default_due_date ?? null,
-      base_amount: body?.base_amount ?? null,
-      minimum_payment: body?.minimum_payment ?? null,
-      target_payment: body?.target_payment ?? null,
-      statement_balance: body?.statement_balance ?? null,
-      auto_rollover: body?.auto_rollover ?? null,
-      requires_review: body?.requires_review ?? null,
-      notes: body?.notes ?? null,
-      sort_order: body?.sort_order ?? 0,
+      category,
+      kind,
+      recurrence_type: recurrenceType,
+      due_day: dueDayValue,
+      base_amount: baseAmountValue,
     };
 
     const { data, error } = await supabase

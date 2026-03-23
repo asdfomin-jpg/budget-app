@@ -145,7 +145,6 @@ export async function POST(request: Request) {
     const dueDate =
       (typeof body?.due_date === "string" && isValidDate(body.due_date) && body.due_date) ||
       buildDateForMonth(billingMonth, template.due_day) ||
-      template.default_due_date ||
       null;
     const nextDueDate = buildDateForMonth(
       getNextMonthFirstDay(billingMonth),
@@ -160,15 +159,11 @@ export async function POST(request: Request) {
           ? templateBaseAmount
           : 0;
 
-    const notes =
-      typeof body?.notes === "string"
-        ? body.notes
-        : template.notes ?? null;
+    const createdAt = new Date().toISOString();
 
     const paymentRow = {
       user_id: user.id,
       template_id: template.id,
-      account_id: template.account_id,
       name: template.name,
       category: template.category,
       kind: template.kind,
@@ -176,18 +171,10 @@ export async function POST(request: Request) {
       due_date: dueDate,
       next_due_date: nextDueDate,
       base_amount: baseAmount,
-      carryover_amount: 0,
       actual_paid_total: 0,
       remaining_amount: baseAmount,
       status: "unpaid",
-      rollover_status: "pending",
       is_reviewed: false,
-      is_locked: false,
-      minimum_payment: template.minimum_payment,
-      target_payment: template.target_payment,
-      statement_balance: template.statement_balance,
-      notes,
-      sort_order: template.sort_order ?? 0,
     };
 
     const { data: payment, error: paymentError } = await supabase
@@ -218,10 +205,12 @@ export async function POST(request: Request) {
       payment_id: payment.id,
       action_type: "created",
       action_source: "manual",
-      billing_month_after: billingMonth,
       actual_paid_amount: 0,
+      remaining_before: baseAmount,
       remaining_after: baseAmount,
+      status_before: "unpaid",
       status_after: "unpaid",
+      paid_at: createdAt,
       note: "Created from template",
     });
 

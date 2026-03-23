@@ -72,18 +72,43 @@ export async function POST(request: Request, context: RouteContext) {
     const paidAt = new Date().toISOString();
     const note = typeof body?.note === "string" ? body.note : null;
 
-    const { data: updatedPayment, error: updateError } = await supabase
+    const baseUpdate = {
+      actual_paid_total: actualPaidTotal,
+      remaining_amount: remainingAmount,
+      status: statusAfter,
+    };
+
+    let updatedPayment = null;
+
+    let { data, error: updateError } = await supabase
       .from("payments")
       .update({
-        actual_paid_total: actualPaidTotal,
-        remaining_amount: remainingAmount,
-        status: statusAfter,
+        ...baseUpdate,
         last_paid_at: paidAt,
       })
       .eq("id", payment.id)
       .eq("user_id", user.id)
       .select("*")
       .single();
+
+    if (
+      updateError &&
+      typeof updateError.message === "string" &&
+      updateError.message.includes("last_paid_at")
+    ) {
+      const retryResult = await supabase
+        .from("payments")
+        .update(baseUpdate)
+        .eq("id", payment.id)
+        .eq("user_id", user.id)
+        .select("*")
+        .single();
+
+      data = retryResult.data;
+      updateError = retryResult.error;
+    }
+
+    updatedPayment = data;
 
     if (updateError) {
       return NextResponse.json({ error: updateError.message }, { status: 500 });

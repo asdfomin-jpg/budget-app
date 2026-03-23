@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
-import DashboardClient from "./DashboardClient";
-import { createServerSupabase } from "../lib/supabase/server";
 
-export default async function HomePage() {
+import DashboardClient from "../DashboardClient";
+import { createServerSupabase } from "../../lib/supabase/server";
+
+export default async function TemplatesPage() {
   const supabase = await createServerSupabase();
   const {
     data: { user },
@@ -13,5 +14,5 @@ export default async function HomePage() {
     redirect("/login");
   }
 
-  return <DashboardClient mode="payments" />;
+  return <DashboardClient mode="templates" />;
 }

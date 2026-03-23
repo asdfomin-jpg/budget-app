@@ -45,7 +45,6 @@ export async function GET(request: Request) {
       .eq("user_id", user.id)
       .eq("billing_month", billingMonth)
       .order("due_date", { ascending: true })
-      .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true });
 
     if (error) {
