@@ -115,16 +115,7 @@ function emptyTemplateForm(): TemplateFormState {
 }
 
 function isCreditPayment(payment: Payment) {
-  const kind = (payment.kind || "").toLowerCase();
-  const category = (payment.category || "").toLowerCase();
-  const name = (payment.name || "").toLowerCase();
-
-  return (
-    kind === "debt" ||
-    category.includes("credit") ||
-    name.includes("credit") ||
-    name.includes("card")
-  );
+  return (payment.kind || "").toLowerCase() === "debt";
 }
 
 function sumPayments(payments: Payment[]): SummaryValues {
@@ -136,6 +127,26 @@ function sumPayments(payments: Payment[]): SummaryValues {
     }),
     { total: 0, paid: 0, remaining: 0 }
   );
+}
+
+function getCarryOver() {
+  return 0;
+}
+
+function getTotalDue(payment: Payment) {
+  return Number(payment.base_amount ?? 0) + getCarryOver();
+}
+
+function getRowBackgroundClass(status: string | null) {
+  if (status === "paid") {
+    return "bg-[#dcfce7]";
+  }
+
+  if (status === "partial") {
+    return "bg-[#fef9c3]";
+  }
+
+  return "bg-white";
 }
 
 export default function HomePageClient({
@@ -235,6 +246,14 @@ export default function HomePageClient({
       void fetchPayments();
     }
   }, [billingMonth, mode]);
+
+  const visiblePayments = useMemo(() => {
+    if (selectedWeek === "Credit") {
+      return payments.filter((payment) => isCreditPayment(payment));
+    }
+
+    return payments;
+  }, [payments, selectedWeek]);
 
   const billsSummary = useMemo(
     () => sumPayments(payments.filter((payment) => !isCreditPayment(payment))),
@@ -473,7 +492,7 @@ export default function HomePageClient({
                 Budget App
               </p>
               <h1 className="mt-1 text-2xl font-semibold text-slate-900">
-                {mode === "payments" ? "Monthly Dashboard" : "Templates"}
+                {mode === "payments" ? "Monthly Dashboard" : "Template Library"}
               </h1>
             </div>
 
@@ -488,17 +507,6 @@ export default function HomePageClient({
                 }`}
               >
                 Payments
-              </button>
-              <button
-                type="button"
-                onClick={() => router.push("/templates")}
-                className={`rounded-lg px-4 py-2 text-sm font-medium ${
-                  mode === "templates"
-                    ? "bg-slate-900 text-white"
-                    : "border border-slate-200 bg-white text-slate-700"
-                }`}
-              >
-                Templates
               </button>
               <button
                 type="button"
@@ -638,67 +646,98 @@ export default function HomePageClient({
 
               {loadingPayments ? (
                 <p className="mt-6 text-sm text-slate-500">Loading payments...</p>
-              ) : payments.length === 0 ? (
+              ) : visiblePayments.length === 0 ? (
                 <p className="mt-6 text-sm text-slate-500">No payments found.</p>
               ) : (
                 <div className="mt-6 overflow-x-auto rounded-xl border border-slate-200">
                   <table className="min-w-full border-collapse text-left text-sm">
                     <thead className="bg-slate-50 text-slate-600">
                       <tr>
-                        <th className="px-4 py-3 font-medium">Type</th>
-                        <th className="px-4 py-3 font-medium">Name</th>
-                        <th className="px-4 py-3 font-medium">Due Date</th>
-                        <th className="px-4 py-3 font-medium">Current Amount</th>
-                        <th className="px-4 py-3 font-medium">Remaining</th>
-                        <th className="px-4 py-3 font-medium">Paid</th>
-                        <th className="px-4 py-3 font-medium">Confirm</th>
-                        <th className="px-4 py-3 font-medium">Actions</th>
+                        <th className="px-3 py-3 text-left font-semibold">Type</th>
+                        <th className="px-3 py-3 text-left font-semibold">Name</th>
+                        <th className="px-3 py-3 text-left font-semibold">Due Date</th>
+                        <th className="px-3 py-3 text-right font-semibold">Current Amount</th>
+                        <th className="px-3 py-3 text-right font-semibold">Carry Over</th>
+                        <th className="px-3 py-3 text-right font-semibold">Total Due</th>
+                        <th className="px-3 py-3 text-right font-semibold">Paid</th>
+                        <th className="px-3 py-3 text-center font-semibold">Confirm</th>
+                        <th className="px-3 py-3 text-left font-semibold">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white">
-                      {payments.map((payment) => (
-                        <tr key={payment.id} className="border-t border-slate-100">
-                          <td className="px-4 py-3 text-slate-600">
+                      {visiblePayments.map((payment) => (
+                        <tr
+                          key={payment.id}
+                          className={`border-t border-slate-100 hover:bg-[#f3f4f6] ${getRowBackgroundClass(
+                            payment.status
+                          )}`}
+                        >
+                          <td className="px-3 py-3 text-slate-600">
                             {payment.kind || payment.category || "-"}
                           </td>
-                          <td className="px-4 py-3 font-medium text-slate-900">
+                          <td className="px-3 py-3 font-medium text-slate-900">
                             {payment.name || "Unnamed payment"}
                           </td>
-                          <td className="px-4 py-3 text-slate-600">
+                          <td className="px-3 py-3 text-slate-600">
                             {formatDate(payment.due_date)}
                           </td>
-                          <td className="px-4 py-3 text-slate-600">
+                          <td className="px-3 py-3 text-right text-slate-600">
                             {formatCurrency(payment.base_amount)}
                           </td>
-                          <td className="px-4 py-3 text-slate-600">
-                            {formatCurrency(payment.remaining_amount)}
+                          <td className="px-3 py-3 text-right text-slate-600">
+                            {formatCurrency(getCarryOver())}
                           </td>
-                          <td className="px-4 py-3 text-slate-600">
+                          <td className="px-3 py-3 text-right font-medium text-slate-900">
+                            {formatCurrency(getTotalDue(payment))}
+                          </td>
+                          <td className="px-3 py-3 text-right text-slate-600">
                             {formatCurrency(payment.actual_paid_total)}
                           </td>
-                          <td className="px-4 py-3 text-slate-600">
-                            {payment.is_reviewed ? "Yes" : "No"}
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex flex-wrap gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handlePay(payment.id)}
-                                disabled={busyPaymentId === payment.id}
-                                className="rounded-lg bg-sky-600 px-3 py-2 text-xs font-medium text-white disabled:opacity-60"
-                              >
-                                {busyPaymentId === payment.id ? "Paying..." : "Pay $5"}
-                              </button>
+                          <td className="px-3 py-3 text-center">
+                            {payment.is_reviewed ? (
+                              <span className="inline-flex items-center rounded-full border border-sky-200 bg-sky-100 px-2.5 py-1 text-xs font-medium text-sky-700">
+                                Confirmed
+                              </span>
+                            ) : (
                               <button
                                 type="button"
                                 onClick={() => handleReview(payment.id)}
-                                disabled={
-                                  busyReviewId === payment.id ||
-                                  Boolean(payment.is_reviewed)
-                                }
-                                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 disabled:opacity-60"
+                                disabled={busyReviewId === payment.id}
+                                className="rounded-lg border border-[#d1d5db] bg-transparent px-3 py-1.5 text-xs font-medium text-[#111827] disabled:opacity-60"
                               >
-                                {busyReviewId === payment.id ? "Reviewing..." : "Review"}
+                                {busyReviewId === payment.id ? "Confirming..." : "Confirm"}
+                              </button>
+                            )}
+                          </td>
+                          <td className="px-3 py-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                              {Number(payment.remaining_amount ?? 0) === 0 ? (
+                                <span className="inline-flex items-center rounded-full border border-green-200 bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700">
+                                  Paid
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handlePay(payment.id)}
+                                  disabled={busyPaymentId === payment.id}
+                                  className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
+                                >
+                                  {busyPaymentId === payment.id ? "Paying..." : "Pay $5"}
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                disabled
+                                className="rounded-lg border border-[#d1d5db] bg-transparent px-3 py-1.5 text-xs font-medium text-[#6b7280] opacity-60"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                disabled
+                                className="rounded-lg bg-[#dc2626] px-3 py-1.5 text-xs font-medium text-white opacity-50"
+                              >
+                                Delete
                               </button>
                             </div>
                           </td>
