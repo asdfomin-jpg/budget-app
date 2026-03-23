@@ -483,8 +483,8 @@ export default function HomePageClient({
   }
 
   return (
-    <main className="min-h-screen bg-slate-100">
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-[#f5f7fb]">
+      <div className="mx-auto max-w-[1200px] px-5 py-6 sm:px-6 lg:px-8">
         <header className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
@@ -530,7 +530,7 @@ export default function HomePageClient({
                   onClick={() => setSelectedYear(year)}
                   className={`rounded-lg px-4 py-2 text-sm font-medium ${
                     selectedYear === year
-                      ? "bg-slate-900 text-white"
+                      ? "bg-[#2563eb] text-white"
                       : "border border-slate-200 bg-slate-50 text-slate-700"
                   }`}
                 >
@@ -547,7 +547,7 @@ export default function HomePageClient({
                   onClick={() => setSelectedMonthIndex(index)}
                   className={`rounded-lg px-3 py-2 text-sm ${
                     selectedMonthIndex === index
-                      ? "bg-sky-600 text-white"
+                      ? "bg-[#2563eb] text-white"
                       : "border border-slate-200 bg-white text-slate-700"
                   }`}
                 >
@@ -564,7 +564,7 @@ export default function HomePageClient({
                   onClick={() => setSelectedWeek(week)}
                   className={`rounded-lg px-3 py-2 text-sm ${
                     selectedWeek === week
-                      ? "bg-amber-500 text-white"
+                      ? "bg-[#2563eb] text-white"
                       : "border border-slate-200 bg-white text-slate-700"
                   }`}
                 >
@@ -607,7 +607,7 @@ export default function HomePageClient({
                 <button
                   type="button"
                   onClick={() => setAddPaymentOpen((current) => !current)}
-                  className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
+                  className="rounded-lg bg-[#2563eb] px-4 py-2 text-sm font-medium text-white"
                 >
                   + Add Payment
                 </button>
